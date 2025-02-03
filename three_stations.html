@@ -1,129 +1,45 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Three Station Routes</title>
+    <title>Google Maps with Overlay</title>
     <style>
-      /* Set the map height and a panel for route info */
       #map {
-        height: 80vh;
+        height: 90vh;
         width: 100%;
       }
-      #panel {
-        height: 20vh;
-        overflow-y: auto;
-        padding: 10px;
-        font-family: Arial, sans-serif;
-        background: #f8f8f8;
-      }
     </style>
-    <!-- Include the Google Maps JavaScript API using your API key -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAmq_h0qMknVu_EE_66YWzy1CWfp_CwY1Q"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY"></script>
     <script>
-      let map;
-      let directionsService;
-      let directionsRenderers = [];
-      
-      // Define your three station origins with coordinates and a color for each.
-      const stations = {
-        "Tara Street": {lat: 53.3473907668813, lng: -6.254548674268324, color: 'blue'},
-        "Pearse": {lat: 53.34361274315517, lng: -6.249502388268081, color: 'red'},
-        "Connolly": {lat: 53.35098334661667, lng: -6.250061547422157, color: 'green'}
-      };
-
       function initMap() {
-        // Compute a center for the map by averaging the three station coordinates.
-        const center = {
-          lat: (stations["Tara Street"].lat + stations["Pearse"].lat + stations["Connolly"].lat) / 3,
-          lng: (stations["Tara Street"].lng + stations["Pearse"].lng + stations["Connolly"].lng) / 3
-        };
-
-        map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 15,
-          center: center
+        var map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 53.345, lng: -6.252 },
+          zoom: 15
         });
 
-        directionsService = new google.maps.DirectionsService();
+        // Load the GeoJSON overlay from a URL or directly from a variable.
+        // Option 1: Load from URL (make sure overlay.geojson is hosted)
+        map.data.loadGeoJson("overlay.geojson");
 
-        // Place station markers on the map.
-        for (const stationName in stations) {
-          const station = stations[stationName];
-          new google.maps.Marker({
-            position: station,
-            map: map,
-            title: stationName,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 6,
-              fillColor: station.color,
-              fillOpacity: 1,
-              strokeColor: 'white',
-              strokeWeight: 2,
-            }
-          });
-        }
+        // Option 2: If you embed the GeoJSON as a JavaScript variable:
+        /*
+        var overlayGeoJson = YOUR_EMBEDDED_GEOJSON_OBJECT;
+        map.data.addGeoJson(overlayGeoJson);
+        */
 
-        // Add a click listener to the map.
-        map.addListener("click", (event) => {
-          calculateAndDisplayRoutes(event.latLng);
-        });
-      }
-
-      // Clear any previously drawn routes.
-      function clearRoutes() {
-        for (let renderer of directionsRenderers) {
-          renderer.setMap(null);
-        }
-        directionsRenderers = [];
-      }
-
-      // Given a destination (clicked point), request and display routes from each station.
-      function calculateAndDisplayRoutes(destination) {
-        clearRoutes();
-
-        // Get a reference to the panel where we will display route info.
-        let panelDiv = document.getElementById("panel");
-        panelDiv.innerHTML = "";  // Clear previous content
-
-        // For each station, request a walking route.
-        for (const stationName in stations) {
-          const origin = stations[stationName];
-          // Create a DirectionsRenderer for this route.
-          const renderer = new google.maps.DirectionsRenderer({
-            suppressMarkers: true,
-            polylineOptions: {
-              strokeColor: stations[stationName].color,
-              strokeWeight: 5
-            }
-          });
-          renderer.setMap(map);
-          directionsRenderers.push(renderer);
-
-          const request = {
-            origin: origin,
-            destination: destination,
-            travelMode: google.maps.TravelMode.WALKING
+        // Set the style for the overlay polygons.
+        map.data.setStyle(function(feature) {
+          var props = feature.getProperty("style");
+          return {
+            fillColor: props.fillColor,
+            fillOpacity: props.fillOpacity,
+            strokeColor: props.color,
+            strokeWeight: 2
           };
-
-          directionsService.route(request, (result, status) => {
-            if (status === google.maps.DirectionsStatus.OK) {
-              renderer.setDirections(result);
-              // Extract distance and duration from the first leg of the route.
-              const leg = result.routes[0].legs[0];
-              const distanceText = leg.distance.text;
-              const durationText = leg.duration.text;
-              panelDiv.innerHTML += `<p><b>${stationName}</b>: ${distanceText} (${durationText})</p>`;
-            } else {
-              panelDiv.innerHTML += `<p><b>${stationName}</b>: Route not found (${status})</p>`;
-            }
-          });
-        }
+        });
       }
     </script>
   </head>
   <body onload="initMap()">
     <div id="map"></div>
-    <div id="panel">
-      <p>Click anywhere on the map to compute walking routes from each station.</p>
-    </div>
   </body>
 </html>
