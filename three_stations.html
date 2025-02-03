@@ -84,6 +84,10 @@
         let panelDiv = document.getElementById("panel");
         panelDiv.innerHTML = "";  // Clear previous content
 
+        let resultsArray = [];
+        let requestsCompleted = 0;
+        const totalStations = Object.keys(stations).length;
+
         // For each station, request a walking route.
         for (const stationName in stations) {
           const origin = stations[stationName];
@@ -91,7 +95,7 @@
           const renderer = new google.maps.DirectionsRenderer({
             suppressMarkers: true,
             polylineOptions: {
-              strokeColor: stations[stationName].color,
+              strokeColor: origin.color,
               strokeWeight: 5
             }
           });
@@ -105,15 +109,38 @@
           };
 
           directionsService.route(request, (result, status) => {
+            requestsCompleted++;
             if (status === google.maps.DirectionsStatus.OK) {
               renderer.setDirections(result);
               // Extract distance and duration from the first leg of the route.
               const leg = result.routes[0].legs[0];
-              const distanceText = leg.distance.text;
+              // Use the numeric distance value (in metres) for sorting.
+              const distanceMeters = leg.distance.value; 
               const durationText = leg.duration.text;
-              panelDiv.innerHTML += `<p><b>${stationName}</b>: ${distanceText} (${durationText})</p>`;
+              resultsArray.push({
+                stationName: stationName,
+                distance: distanceMeters,
+                duration: durationText
+              });
             } else {
-              panelDiv.innerHTML += `<p><b>${stationName}</b>: Route not found (${status})</p>`;
+              resultsArray.push({
+                stationName: stationName,
+                distance: Number.POSITIVE_INFINITY,
+                duration: "Route not found (" + status + ")"
+              });
+            }
+            // When all station requests have completed, sort and display the results.
+            if (requestsCompleted === totalStations) {
+              resultsArray.sort((a, b) => a.distance - b.distance);
+              let html = "";
+              resultsArray.forEach(result => {
+                if (result.distance === Number.POSITIVE_INFINITY) {
+                  html += `<p><b>${result.stationName}</b>: ${result.duration}</p>`;
+                } else {
+                  html += `<p><b>${result.stationName}</b>: ${result.distance} m (${result.duration})</p>`;
+                }
+              });
+              panelDiv.innerHTML = html;
             }
           });
         }
