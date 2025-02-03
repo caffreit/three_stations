@@ -14,6 +14,7 @@
         padding: 10px;
         font-family: Arial, sans-serif;
         background: #f8f8f8;
+        font-size: 1.2em;  /* Increase base font size */
       }
     </style>
     <!-- Include the Google Maps JavaScript API using your API key -->
@@ -25,9 +26,9 @@
       
       // Define your three station origins with coordinates and a color for each.
       const stations = {
-        "Connolly": {lat: 53.35098334661667, lng: -6.250061547422157, color: 'green'},
         "Tara Street": {lat: 53.3473907668813, lng: -6.254548674268324, color: 'blue'},
-        "Pearse": {lat: 53.34361274315517, lng: -6.249502388268081, color: 'red'}
+        "Pearse": {lat: 53.34361274315517, lng: -6.249502388268081, color: 'red'},
+        "Connolly": {lat: 53.35098334661667, lng: -6.250061547422157, color: 'green'}
       };
 
       function initMap() {
@@ -44,7 +45,7 @@
 
         directionsService = new google.maps.DirectionsService();
 
-        // Place station markers on the map.
+        // Place station markers on the map with larger dots.
         for (const stationName in stations) {
           const station = stations[stationName];
           new google.maps.Marker({
@@ -53,7 +54,7 @@
             title: stationName,
             icon: {
               path: google.maps.SymbolPath.CIRCLE,
-              scale: 6,
+              scale: 10, // Increased scale for bigger markers.
               fillColor: station.color,
               fillOpacity: 1,
               strokeColor: 'white',
@@ -77,26 +78,30 @@
       }
 
       // Given a destination (clicked point), request and display routes from each station.
+      // This version orders the routes so that Tara's route is drawn last (and with a higher zIndex)
       function calculateAndDisplayRoutes(destination) {
         clearRoutes();
 
-        // Get a reference to the panel where we will display route info.
         let panelDiv = document.getElementById("panel");
         panelDiv.innerHTML = "";  // Clear previous content
 
         let resultsArray = [];
         let requestsCompleted = 0;
-        const totalStations = Object.keys(stations).length;
+        // Order the stations so that "Tara Street" is processed last.
+        const orderedStationNames = ["Connolly", "Tara Street", "Pearse"];
+        const totalStations = orderedStationNames.length;
 
-        // For each station, request a walking route.
-        for (const stationName in stations) {
+        orderedStationNames.forEach(stationName => {
           const origin = stations[stationName];
           // Create a DirectionsRenderer for this route.
           const renderer = new google.maps.DirectionsRenderer({
             suppressMarkers: true,
             polylineOptions: {
               strokeColor: origin.color,
-              strokeWeight: 5
+              strokeWeight: 5,
+              // Give Tara's route a higher zIndex so that it appears on top.
+              zIndex: (stationName === "Tara Street") ? 1000 : 1
+              zIndex: (stationName === "Pearse") ? 1500 : 1
             }
           });
           renderer.setMap(map);
@@ -112,10 +117,9 @@
             requestsCompleted++;
             if (status === google.maps.DirectionsStatus.OK) {
               renderer.setDirections(result);
-              // Extract distance and duration from the first leg of the route.
               const leg = result.routes[0].legs[0];
-              // Use the numeric distance value (in metres) for sorting.
-              const distanceMeters = leg.distance.value; 
+              // Use the numeric value (in metres) for precise distance.
+              const distanceMeters = leg.distance.value;
               const durationText = leg.duration.text;
               resultsArray.push({
                 stationName: stationName,
@@ -143,7 +147,7 @@
               panelDiv.innerHTML = html;
             }
           });
-        }
+        });
       }
     </script>
   </head>
